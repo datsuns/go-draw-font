@@ -105,41 +105,18 @@ func load_font(path string) *truetype.Font {
 	return ft
 }
 
-func main() {
-	cfg, err := load_config("config.yaml")
-	if err != nil {
-		panic(err)
-	}
-	cfg.Dump()
-	ft := load_font(cfg.Font)
-	opt := truetype.Options{
-		Size:              cfg.Size,
-		DPI:               0,
-		Hinting:           0,
-		GlyphCacheEntries: 0,
-		SubPixelsX:        0,
-		SubPixelsY:        0,
-	}
-
+func gen_png(ft *truetype.Font, opt *truetype.Options, cfg *Config, list []string) {
 	imageWidth := cfg.Image.Width
 	imageHeight := cfg.Image.Height
 
 	img := image.NewRGBA(image.Rect(0, 0, imageWidth, imageHeight))
-	face := truetype.NewFace(ft, &opt)
+	face := truetype.NewFace(ft, opt)
 
 	dr := &font.Drawer{
 		Dst:  img,
 		Src:  image.Black,
 		Face: face,
 		Dot:  fixed.Point26_6{},
-	}
-
-	text := []string{
-		".", ".", "1", "2", "3", "4", "5",
-		"6", "7", "8", "9", "10", "11", "12",
-		"13", "14", "15", "16", "17", "18", "19",
-		"20", "21", "22", "23", "24", "25", "26",
-		"27", "28", "29", "30", "31",
 	}
 
 	file, err := os.Create(`test.png`)
@@ -151,7 +128,7 @@ func main() {
 
 	buf := &bytes.Buffer{}
 	h_idx := 0
-	for i, c := range text {
+	for i, c := range list {
 		if c == "." {
 			continue
 		}
@@ -170,4 +147,30 @@ func main() {
 		os.Exit(1)
 	}
 	file.Write(buf.Bytes())
+}
+
+func main() {
+	cfg, err := load_config("config.yaml")
+	if err != nil {
+		panic(err)
+	}
+	cfg.Dump()
+	ft := load_font(cfg.Font)
+	opt := truetype.Options{
+		Size:              cfg.Size,
+		DPI:               0,
+		Hinting:           0,
+		GlyphCacheEntries: 0,
+		SubPixelsX:        0,
+		SubPixelsY:        0,
+	}
+
+	text := []string{
+		".", ".", "1", "2", "3", "4", "5",
+		"6", "7", "8", "9", "10", "11", "12",
+		"13", "14", "15", "16", "17", "18", "19",
+		"20", "21", "22", "23", "24", "25", "26",
+		"27", "28", "29", "30", "31",
+	}
+	gen_png(ft, &opt, cfg, text)
 }
