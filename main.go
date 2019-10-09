@@ -17,6 +17,7 @@ import (
 	"image/png"
 	"io/ioutil"
 	"os"
+	//"time"
 
 	"github.com/golang/freetype/truetype"
 	"golang.org/x/image/font"
@@ -105,7 +106,7 @@ func load_font(path string) *truetype.Font {
 	return ft
 }
 
-func gen_png(ft *truetype.Font, opt *truetype.Options, cfg *Config, list []string) {
+func gen_png(ft *truetype.Font, opt *truetype.Options, cfg *Config, title string, list []string) {
 	imageWidth := cfg.Image.Width
 	imageHeight := cfg.Image.Height
 
@@ -119,7 +120,7 @@ func gen_png(ft *truetype.Font, opt *truetype.Options, cfg *Config, list []strin
 		Dot:  fixed.Point26_6{},
 	}
 
-	file, err := os.Create(`test.png`)
+	file, err := os.Create(title + ".png")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -149,6 +150,18 @@ func gen_png(ft *truetype.Font, opt *truetype.Options, cfg *Config, list []strin
 	file.Write(buf.Bytes())
 }
 
+func gen_day_list(cfg *Config) map[string][]string {
+	ret := map[string][]string{}
+	ret["2010-10"] = []string{
+		".", ".", "1", "2", "3", "4", "5",
+		"6", "7", "8", "9", "10", "11", "12",
+		"13", "14", "15", "16", "17", "18", "19",
+		"20", "21", "22", "23", "24", "25", "26",
+		"27", "28", "29", "30", "31",
+	}
+	return ret
+}
+
 func main() {
 	cfg, err := load_config("config.yaml")
 	if err != nil {
@@ -165,12 +178,8 @@ func main() {
 		SubPixelsY:        0,
 	}
 
-	text := []string{
-		".", ".", "1", "2", "3", "4", "5",
-		"6", "7", "8", "9", "10", "11", "12",
-		"13", "14", "15", "16", "17", "18", "19",
-		"20", "21", "22", "23", "24", "25", "26",
-		"27", "28", "29", "30", "31",
+	day_list := gen_day_list(cfg)
+	for n, t := range day_list {
+		gen_png(ft, &opt, cfg, n, t)
 	}
-	gen_png(ft, &opt, cfg, text)
 }
