@@ -29,8 +29,9 @@ import (
 )
 
 var (
-	DestRoot    = "output"
-	DefaultXPos = []fixed.Int26_6{
+	EmptyDayChar = "."
+	DestRoot     = "output"
+	DefaultXPos  = []fixed.Int26_6{
 		fixed.I(0),
 		fixed.I(150 - 7),
 		fixed.I(300 - 14),
@@ -135,7 +136,7 @@ func gen_png(ft *truetype.Font, opt *truetype.Options, cfg *Config, title string
 	buf := &bytes.Buffer{}
 	h_idx := 0
 	for i, c := range list {
-		if c == "." {
+		if c == EmptyDayChar {
 			continue
 		}
 		dr.Dot.X = fixed.I(cfg.XPos[i%7])
@@ -169,13 +170,10 @@ func gen_month_text(year, month int) (string, []string) {
 	title := fmt.Sprintf("%v-%02v", year, month)
 	t := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local)
 	for i := time.Sunday; i < t.Weekday(); i++ {
-		body = append(body, ".")
+		body = append(body, EmptyDayChar)
 	}
-	for i := 1; ; i++ {
+	for i := 1; day_exists(year, month, i); i++ {
 		body = append(body, fmt.Sprintf("%v", i))
-		if !day_exists(year, month, i+1) {
-			break
-		}
 	}
 	return title, body
 }
