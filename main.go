@@ -14,6 +14,7 @@ import (
 	"bytes"
 	"fmt"
 	"image"
+	"image/color"
 	"image/png"
 	"io/ioutil"
 	"os"
@@ -121,7 +122,7 @@ func gen_png(ft *truetype.Font, opt *truetype.Options, cfg *Config, title string
 
 	dr := &font.Drawer{
 		Dst:  img,
-		Src:  image.Black,
+		Src:  image.NewUniform(color.RGBA{255, 0, 0, 255}),
 		Face: face,
 		Dot:  fixed.Point26_6{},
 	}
