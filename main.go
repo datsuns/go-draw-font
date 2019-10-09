@@ -17,7 +17,9 @@ import (
 	"image/png"
 	"io/ioutil"
 	"os"
-	//"time"
+	"path/filepath"
+	"sync"
+	"time"
 
 	"github.com/golang/freetype/truetype"
 	"golang.org/x/image/font"
@@ -27,6 +29,7 @@ import (
 )
 
 var (
+	DestRoot    = "output"
 	DefaultXPos = []fixed.Int26_6{
 		fixed.I(0),
 		fixed.I(150 - 7),
@@ -42,6 +45,7 @@ var (
 		fixed.I(380 + 2),
 		fixed.I(525 + 2),
 		fixed.I(670 + 2),
+		fixed.I(815 + 2),
 	}
 )
 
@@ -107,6 +111,7 @@ func load_font(path string) *truetype.Font {
 }
 
 func gen_png(ft *truetype.Font, opt *truetype.Options, cfg *Config, title string, list []string) {
+	fmt.Printf("generate [%v] start\n", title)
 	imageWidth := cfg.Image.Width
 	imageHeight := cfg.Image.Height
 
@@ -120,7 +125,7 @@ func gen_png(ft *truetype.Font, opt *truetype.Options, cfg *Config, title string
 		Dot:  fixed.Point26_6{},
 	}
 
-	file, err := os.Create(title + ".png")
+	file, err := os.Create(filepath.Join(DestRoot, title+".png"))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -136,7 +141,7 @@ func gen_png(ft *truetype.Font, opt *truetype.Options, cfg *Config, title string
 		dr.Dot.X = fixed.I(cfg.XPos[i%7])
 		dr.Dot.Y = fixed.I(cfg.YPos[h_idx])
 		buf.Reset()
-		fmt.Printf("%2v) x:%v, y:%v char[%v]\n", i, dr.Dot.X, dr.Dot.Y, c)
+		//fmt.Printf("%2v) x:%v, y:%v char[%v]\n", i, dr.Dot.X, dr.Dot.Y, c)
 		dr.DrawString(c)
 		err = png.Encode(buf, img)
 		if (i > 0) && (i%7 == 6) {
@@ -150,14 +155,45 @@ func gen_png(ft *truetype.Font, opt *truetype.Options, cfg *Config, title string
 	file.Write(buf.Bytes())
 }
 
+func day_exists(year, month, day int) bool {
+	date := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.Local)
+	if date.Year() == year && date.Month() == time.Month(month) && date.Day() == day {
+		return true
+	} else {
+		return false
+	}
+}
+
+func gen_month_text(year, month int) (string, []string) {
+	body := []string{}
+	title := fmt.Sprintf("%v-%02v", year, month)
+	t := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local)
+	for i := time.Sunday; i < t.Weekday(); i++ {
+		body = append(body, ".")
+	}
+	for i := 1; ; i++ {
+		body = append(body, fmt.Sprintf("%v", i))
+		if !day_exists(year, month, i+1) {
+			break
+		}
+	}
+	return title, body
+}
+
 func gen_day_list(cfg *Config) map[string][]string {
+	if cfg.Output.Year == 0 {
+		panic("plese set Year in config")
+	}
+	mlist := []int{}
+	if cfg.Output.Month == 0 {
+		mlist = []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
+	} else {
+		mlist = []int{cfg.Output.Month}
+	}
 	ret := map[string][]string{}
-	ret["2010-10"] = []string{
-		".", ".", "1", "2", "3", "4", "5",
-		"6", "7", "8", "9", "10", "11", "12",
-		"13", "14", "15", "16", "17", "18", "19",
-		"20", "21", "22", "23", "24", "25", "26",
-		"27", "28", "29", "30", "31",
+	for _, m := range mlist {
+		title, body := gen_month_text(cfg.Output.Year, m)
+		ret[title] = body
 	}
 	return ret
 }
@@ -168,6 +204,7 @@ func main() {
 		panic(err)
 	}
 	cfg.Dump()
+	os.MkdirAll(DestRoot, 0777)
 	ft := load_font(cfg.Font)
 	opt := truetype.Options{
 		Size:              cfg.Size,
@@ -179,7 +216,13 @@ func main() {
 	}
 
 	day_list := gen_day_list(cfg)
+	wg := &sync.WaitGroup{}
 	for n, t := range day_list {
-		gen_png(ft, &opt, cfg, n, t)
+		wg.Add(1)
+		go func(title string, body []string) {
+			gen_png(ft, &opt, cfg, title, body)
+			wg.Done()
+		}(n, t)
 	}
+	wg.Wait()
 }

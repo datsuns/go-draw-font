@@ -1,6 +1,6 @@
 output:
-  year: 2010
-  month: 11
+  year: 2020
+  month: 1
 font: ./GN-KillGothic-U-KanaNA.ttf
 size: 60.0
 image:
@@ -20,4 +20,5 @@ YPos:
   - 382
   - 527
   - 672
+  - 817
 
