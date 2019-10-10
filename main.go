@@ -30,12 +30,15 @@ import (
 )
 
 var (
-	EmptyDayChar = "."
-	DestRoot     = "output"
-	ColorRed     = color.RGBA{255, 0, 0, 255}
-	ColorBlue    = color.RGBA{0, 0, 255, 255}
-	ColorGreen   = color.RGBA{0, 255, 0, 255}
-	DefaultXPos  = []fixed.Int26_6{
+	EmptyDayChar  = "."
+	DestRoot      = "output"
+	ColorRed      = color.RGBA{255, 0, 0, 255}
+	ColorBlue     = color.RGBA{0, 0, 255, 255}
+	ColorGreen    = color.RGBA{0, 255, 0, 255}
+	ColorWeekDay  = color.RGBA{0x51, 0x51, 0x51, 255}
+	ColorSaturDay = color.RGBA{0x62, 0x88, 0xe3, 255}
+	ColorSunDay   = color.RGBA{0xd9, 0x6b, 0x6b, 255}
+	DefaultXPos   = []fixed.Int26_6{
 		fixed.I(0),
 		fixed.I(150 - 7),
 		fixed.I(300 - 14),
@@ -53,6 +56,11 @@ var (
 		fixed.I(815 + 2),
 	}
 )
+
+type DayEntry struct {
+	s string
+	d time.Weekday
+}
 
 type Config struct {
 	Output struct {
@@ -129,6 +137,24 @@ func gen_png(ft *truetype.Font, opt *truetype.Options, cfg *Config, title string
 		Face: face,
 		Dot:  fixed.Point26_6{},
 	}
+	dr_weekday := &font.Drawer{
+		Dst:  img,
+		Src:  image.NewUniform(ColorWeekDay),
+		Face: face,
+		Dot:  fixed.Point26_6{},
+	}
+	dr_saturday := &font.Drawer{
+		Dst:  img,
+		Src:  image.NewUniform(ColorSaturDay),
+		Face: face,
+		Dot:  fixed.Point26_6{},
+	}
+	dr_sunday := &font.Drawer{
+		Dst:  img,
+		Src:  image.NewUniform(ColorSunDay),
+		Face: face,
+		Dot:  fixed.Point26_6{},
+	}
 
 	file, err := os.Create(filepath.Join(DestRoot, title+".png"))
 	if err != nil {
@@ -137,6 +163,7 @@ func gen_png(ft *truetype.Font, opt *truetype.Options, cfg *Config, title string
 	}
 	defer file.Close()
 
+	t := time.Date(2020, time.Month(1), 1, 0, 0, 0, 0, time.Local)
 	buf := &bytes.Buffer{}
 	h_idx := 0
 	for i, c := range list {
@@ -145,13 +172,28 @@ func gen_png(ft *truetype.Font, opt *truetype.Options, cfg *Config, title string
 		}
 		dr.Dot.X = fixed.I(cfg.XPos[i%7])
 		dr.Dot.Y = fixed.I(cfg.YPos[h_idx])
+		dr_weekday.Dot.X = fixed.I(cfg.XPos[i%7])
+		dr_weekday.Dot.Y = fixed.I(cfg.YPos[h_idx])
+		dr_saturday.Dot.X = fixed.I(cfg.XPos[i%7])
+		dr_saturday.Dot.Y = fixed.I(cfg.YPos[h_idx])
+		dr_sunday.Dot.X = fixed.I(cfg.XPos[i%7])
+		dr_sunday.Dot.Y = fixed.I(cfg.YPos[h_idx])
 		buf.Reset()
 		//fmt.Printf("%2v) x:%v, y:%v char[%v]\n", i, dr.Dot.X, dr.Dot.Y, c)
-		dr.DrawString(c)
+		fmt.Printf("%v -> %v\n", c, t.Weekday())
+		if t.Weekday() == time.Sunday {
+			dr_sunday.DrawString(c)
+		} else if t.Weekday() == time.Saturday {
+			dr_saturday.DrawString(c)
+		} else {
+			dr_weekday.DrawString(c)
+		}
+		//dr.DrawString(c)
 		err = png.Encode(buf, img)
 		if (i > 0) && (i%7 == 6) {
 			h_idx += 1
 		}
+		t = t.Add(time.Duration(24) * time.Hour)
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
