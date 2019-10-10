@@ -123,7 +123,7 @@ func load_font(path string) *truetype.Font {
 	return ft
 }
 
-func gen_png(ft *truetype.Font, opt *truetype.Options, cfg *Config, title string, list []string) {
+func gen_png(ft *truetype.Font, opt *truetype.Options, cfg *Config, title string, list []DayEntry) {
 	fmt.Printf("generate [%v] start\n", title)
 	imageWidth := cfg.Image.Width
 	imageHeight := cfg.Image.Height
@@ -163,11 +163,12 @@ func gen_png(ft *truetype.Font, opt *truetype.Options, cfg *Config, title string
 	}
 	defer file.Close()
 
-	t := time.Date(2020, time.Month(1), 1, 0, 0, 0, 0, time.Local)
 	buf := &bytes.Buffer{}
 	h_idx := 0
 	for i, c := range list {
-		if c == EmptyDayChar {
+		text := c.s
+		weekDay := c.d
+		if text == EmptyDayChar {
 			continue
 		}
 		dr.Dot.X = fixed.I(cfg.XPos[i%7])
@@ -179,21 +180,18 @@ func gen_png(ft *truetype.Font, opt *truetype.Options, cfg *Config, title string
 		dr_sunday.Dot.X = fixed.I(cfg.XPos[i%7])
 		dr_sunday.Dot.Y = fixed.I(cfg.YPos[h_idx])
 		buf.Reset()
-		//fmt.Printf("%2v) x:%v, y:%v char[%v]\n", i, dr.Dot.X, dr.Dot.Y, c)
-		fmt.Printf("%v -> %v\n", c, t.Weekday())
-		if t.Weekday() == time.Sunday {
-			dr_sunday.DrawString(c)
-		} else if t.Weekday() == time.Saturday {
-			dr_saturday.DrawString(c)
+		//fmt.Printf("%2v) x:%v, y:%v char[%v]\n", i, dr.Dot.X, dr.Dot.Y, text)
+		if weekDay == time.Sunday {
+			dr_sunday.DrawString(text)
+		} else if weekDay == time.Saturday {
+			dr_saturday.DrawString(text)
 		} else {
-			dr_weekday.DrawString(c)
+			dr_weekday.DrawString(text)
 		}
-		//dr.DrawString(c)
 		err = png.Encode(buf, img)
 		if (i > 0) && (i%7 == 6) {
 			h_idx += 1
 		}
-		t = t.Add(time.Duration(24) * time.Hour)
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -211,20 +209,21 @@ func day_exists(year, month, day int) bool {
 	}
 }
 
-func gen_month_text(year, month int) (string, []string) {
-	body := []string{}
+func gen_month_text(year, month int) (string, []DayEntry) {
+	body := []DayEntry{}
 	title := fmt.Sprintf("%v-%02v", year, month)
 	t := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local)
 	for i := time.Sunday; i < t.Weekday(); i++ {
-		body = append(body, EmptyDayChar)
+		body = append(body, DayEntry{s: EmptyDayChar, d: 0})
 	}
 	for i := 1; day_exists(year, month, i); i++ {
-		body = append(body, fmt.Sprintf("%v", i))
+		body = append(body, DayEntry{s: fmt.Sprintf("%v", i), d: t.Weekday()})
+		t = t.Add(time.Duration(24) * time.Hour)
 	}
 	return title, body
 }
 
-func gen_day_list(cfg *Config) map[string][]string {
+func gen_day_list(cfg *Config) map[string][]DayEntry {
 	if cfg.Output.Year == 0 {
 		panic("plese set Year in config")
 	}
@@ -234,7 +233,7 @@ func gen_day_list(cfg *Config) map[string][]string {
 	} else {
 		mlist = []int{cfg.Output.Month}
 	}
-	ret := map[string][]string{}
+	ret := map[string][]DayEntry{}
 	for _, m := range mlist {
 		title, body := gen_month_text(cfg.Output.Year, m)
 		ret[title] = body
@@ -263,7 +262,7 @@ func main() {
 	wg := &sync.WaitGroup{}
 	for n, t := range day_list {
 		wg.Add(1)
-		go func(title string, body []string) {
+		go func(title string, body []DayEntry) {
 			gen_png(ft, &opt, cfg, title, body)
 			wg.Done()
 		}(n, t)
