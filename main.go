@@ -32,6 +32,9 @@ import (
 var (
 	EmptyDayChar = "."
 	DestRoot     = "output"
+	ColorRed     = color.RGBA{255, 0, 0, 255}
+	ColorBlue    = color.RGBA{0, 0, 255, 255}
+	ColorGreen   = color.RGBA{0, 255, 0, 255}
 	DefaultXPos  = []fixed.Int26_6{
 		fixed.I(0),
 		fixed.I(150 - 7),
@@ -122,7 +125,7 @@ func gen_png(ft *truetype.Font, opt *truetype.Options, cfg *Config, title string
 
 	dr := &font.Drawer{
 		Dst:  img,
-		Src:  image.NewUniform(color.RGBA{255, 0, 0, 255}),
+		Src:  image.NewUniform(ColorRed),
 		Face: face,
 		Dot:  fixed.Point26_6{},
 	}
