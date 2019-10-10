@@ -30,15 +30,15 @@ import (
 )
 
 var (
-	EmptyDayChar  = "."
-	DestRoot      = "output"
-	ColorRed      = color.RGBA{255, 0, 0, 255}
-	ColorBlue     = color.RGBA{0, 0, 255, 255}
-	ColorGreen    = color.RGBA{0, 255, 0, 255}
-	ColorWeekDay  = color.RGBA{0x51, 0x51, 0x51, 255}
-	ColorSaturDay = color.RGBA{0x62, 0x88, 0xe3, 255}
-	ColorSunDay   = color.RGBA{0xd9, 0x6b, 0x6b, 255}
-	DefaultXPos   = []fixed.Int26_6{
+	EmptyDayChar = "."
+	DestRoot     = "output"
+	ColorRed     = color.RGBA{255, 0, 0, 255}
+	ColorBlue    = color.RGBA{0, 0, 255, 255}
+	ColorGreen   = color.RGBA{0, 255, 0, 255}
+	//ColorWeekDay  = color.RGBA{0x51, 0x51, 0x51, 255}
+	//ColorSaturDay = color.RGBA{0x62, 0x88, 0xe3, 255}
+	//ColorSunDay   = color.RGBA{0xd9, 0x6b, 0x6b, 255}
+	DefaultXPos = []fixed.Int26_6{
 		fixed.I(0),
 		fixed.I(150 - 7),
 		fixed.I(300 - 14),
@@ -74,9 +74,9 @@ type Config struct {
 		Height int `yaml:"height"`
 	}
 	Color struct {
-		WeekDay  []int `yaml:"weekday,flow"`
-		SaturDay []int `yaml:"saturday,flow"`
-		SunDay   []int `yaml:"sunday,flow"`
+		WeekDay  []uint8 `yaml:"weekday,flow"`
+		SaturDay []uint8 `yaml:"saturday,flow"`
+		SunDay   []uint8 `yaml:"sunday,flow"`
 	}
 	XPos []int `yaml:"XPos,flow"`
 	YPos []int `yaml:"YPos,flow"`
@@ -88,9 +88,21 @@ func (c *Config) Dump() {
 	fmt.Printf("font size : %v\n", c.Size)
 	fmt.Printf("    image : %vx%v\n", c.Image.Width, c.Image.Height)
 	fmt.Printf("    color : \n")
-	fmt.Printf("       weekday  : %v\n", c.Color.WeekDay)
-	fmt.Printf("       saturday : %v\n", c.Color.SaturDay)
-	fmt.Printf("       sunday   : %v\n", c.Color.SunDay)
+	fmt.Printf("       weekday  : ")
+	for _, d := range c.Color.WeekDay {
+		fmt.Printf("0x%02x ", d)
+	}
+	fmt.Printf("\n")
+	fmt.Printf("       saturday : ")
+	for _, d := range c.Color.SaturDay {
+		fmt.Printf("0x%02x ", d)
+	}
+	fmt.Printf("\n")
+	fmt.Printf("       sunday   : ")
+	for _, d := range c.Color.SunDay {
+		fmt.Printf("0x%02x ", d)
+	}
+	fmt.Printf("\n")
 	fmt.Printf("    Xpos  : ")
 	for i, p := range c.XPos {
 		fmt.Printf("[%v:%v],", i, p)
@@ -136,16 +148,13 @@ func gen_png(ft *truetype.Font, opt *truetype.Options, cfg *Config, title string
 	fmt.Printf("generate [%v] start\n", title)
 	imageWidth := cfg.Image.Width
 	imageHeight := cfg.Image.Height
+	ColorWeekDay := color.RGBA{cfg.Color.WeekDay[0], cfg.Color.WeekDay[1], cfg.Color.WeekDay[2], 255}
+	ColorSaturDay := color.RGBA{cfg.Color.SaturDay[0], cfg.Color.SaturDay[1], cfg.Color.SaturDay[2], 255}
+	ColorSunDay := color.RGBA{cfg.Color.SunDay[0], cfg.Color.SunDay[1], cfg.Color.SunDay[2], 255}
 
 	img := image.NewRGBA(image.Rect(0, 0, imageWidth, imageHeight))
 	face := truetype.NewFace(ft, opt)
 
-	dr := &font.Drawer{
-		Dst:  img,
-		Src:  image.NewUniform(ColorRed),
-		Face: face,
-		Dot:  fixed.Point26_6{},
-	}
 	dr_weekday := &font.Drawer{
 		Dst:  img,
 		Src:  image.NewUniform(ColorWeekDay),
@@ -180,8 +189,6 @@ func gen_png(ft *truetype.Font, opt *truetype.Options, cfg *Config, title string
 		if text == EmptyDayChar {
 			continue
 		}
-		dr.Dot.X = fixed.I(cfg.XPos[i%7])
-		dr.Dot.Y = fixed.I(cfg.YPos[h_idx])
 		dr_weekday.Dot.X = fixed.I(cfg.XPos[i%7])
 		dr_weekday.Dot.Y = fixed.I(cfg.YPos[h_idx])
 		dr_saturday.Dot.X = fixed.I(cfg.XPos[i%7])
@@ -256,7 +263,6 @@ func main() {
 		panic(err)
 	}
 	cfg.Dump()
-	return
 	os.MkdirAll(DestRoot, 0777)
 	ft := load_font(cfg.Font)
 	opt := truetype.Options{
