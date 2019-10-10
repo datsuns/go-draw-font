@@ -30,15 +30,15 @@ import (
 )
 
 var (
-	EmptyDayChar = "."
-	DestRoot     = "output"
-	ColorRed     = color.RGBA{255, 0, 0, 255}
-	ColorBlue    = color.RGBA{0, 0, 255, 255}
-	ColorGreen   = color.RGBA{0, 255, 0, 255}
-	//ColorWeekDay  = color.RGBA{0x51, 0x51, 0x51, 255}
-	//ColorSaturDay = color.RGBA{0x62, 0x88, 0xe3, 255}
-	//ColorSunDay   = color.RGBA{0xd9, 0x6b, 0x6b, 255}
-	DefaultXPos = []fixed.Int26_6{
+	EmptyDayChar  = "."
+	DestRoot      = "output"
+	ColorRed      = color.RGBA{255, 0, 0, 255}
+	ColorBlue     = color.RGBA{0, 0, 255, 255}
+	ColorGreen    = color.RGBA{0, 255, 0, 255}
+	ColorWeekDay  color.RGBA
+	ColorSaturDay color.RGBA
+	ColorSunDay   color.RGBA
+	DefaultXPos   = []fixed.Int26_6{
 		fixed.I(0),
 		fixed.I(150 - 7),
 		fixed.I(300 - 14),
@@ -144,35 +144,36 @@ func load_font(path string) *truetype.Font {
 	return ft
 }
 
-func gen_png(ft *truetype.Font, opt *truetype.Options, cfg *Config, title string, list []DayEntry) {
-	fmt.Printf("generate [%v] start\n", title)
-	imageWidth := cfg.Image.Width
-	imageHeight := cfg.Image.Height
-	ColorWeekDay := color.RGBA{cfg.Color.WeekDay[0], cfg.Color.WeekDay[1], cfg.Color.WeekDay[2], 255}
-	ColorSaturDay := color.RGBA{cfg.Color.SaturDay[0], cfg.Color.SaturDay[1], cfg.Color.SaturDay[2], 255}
-	ColorSunDay := color.RGBA{cfg.Color.SunDay[0], cfg.Color.SunDay[1], cfg.Color.SunDay[2], 255}
-
-	img := image.NewRGBA(image.Rect(0, 0, imageWidth, imageHeight))
-	face := truetype.NewFace(ft, opt)
-
-	dr_weekday := &font.Drawer{
+func gen_drawer(img *image.RGBA, face font.Face) (weekday *font.Drawer, sat *font.Drawer, sun *font.Drawer) {
+	weekday = &font.Drawer{
 		Dst:  img,
 		Src:  image.NewUniform(ColorWeekDay),
 		Face: face,
 		Dot:  fixed.Point26_6{},
 	}
-	dr_saturday := &font.Drawer{
+	sat = &font.Drawer{
 		Dst:  img,
 		Src:  image.NewUniform(ColorSaturDay),
 		Face: face,
 		Dot:  fixed.Point26_6{},
 	}
-	dr_sunday := &font.Drawer{
+	sun = &font.Drawer{
 		Dst:  img,
 		Src:  image.NewUniform(ColorSunDay),
 		Face: face,
 		Dot:  fixed.Point26_6{},
 	}
+	return weekday, sat, sun
+}
+
+func gen_png(ft *truetype.Font, opt *truetype.Options, cfg *Config, title string, list []DayEntry) {
+	fmt.Printf("generate [%v] start\n", title)
+	imageWidth := cfg.Image.Width
+	imageHeight := cfg.Image.Height
+
+	img := image.NewRGBA(image.Rect(0, 0, imageWidth, imageHeight))
+	face := truetype.NewFace(ft, opt)
+	dr_week, dr_sat, dr_sun := gen_drawer(img, face)
 
 	file, err := os.Create(filepath.Join(DestRoot, title+".png"))
 	if err != nil {
@@ -189,21 +190,20 @@ func gen_png(ft *truetype.Font, opt *truetype.Options, cfg *Config, title string
 		if text == EmptyDayChar {
 			continue
 		}
-		dr_weekday.Dot.X = fixed.I(cfg.XPos[i%7])
-		dr_weekday.Dot.Y = fixed.I(cfg.YPos[h_idx])
-		dr_saturday.Dot.X = fixed.I(cfg.XPos[i%7])
-		dr_saturday.Dot.Y = fixed.I(cfg.YPos[h_idx])
-		dr_sunday.Dot.X = fixed.I(cfg.XPos[i%7])
-		dr_sunday.Dot.Y = fixed.I(cfg.YPos[h_idx])
 		buf.Reset()
+		var dr *font.Drawer
 		//fmt.Printf("%2v) x:%v, y:%v char[%v]\n", i, dr.Dot.X, dr.Dot.Y, text)
-		if weekDay == time.Sunday {
-			dr_sunday.DrawString(text)
-		} else if weekDay == time.Saturday {
-			dr_saturday.DrawString(text)
-		} else {
-			dr_weekday.DrawString(text)
+		switch weekDay {
+		case time.Sunday:
+			dr = dr_sun
+		case time.Saturday:
+			dr = dr_sat
+		default:
+			dr = dr_week
 		}
+		dr.Dot.X = fixed.I(cfg.XPos[i%7])
+		dr.Dot.Y = fixed.I(cfg.YPos[h_idx])
+		dr.DrawString(text)
 		err = png.Encode(buf, img)
 		if (i > 0) && (i%7 == 6) {
 			h_idx += 1
@@ -273,6 +273,9 @@ func main() {
 		SubPixelsX:        0,
 		SubPixelsY:        0,
 	}
+	ColorWeekDay = color.RGBA{cfg.Color.WeekDay[0], cfg.Color.WeekDay[1], cfg.Color.WeekDay[2], 255}
+	ColorSaturDay = color.RGBA{cfg.Color.SaturDay[0], cfg.Color.SaturDay[1], cfg.Color.SaturDay[2], 255}
+	ColorSunDay = color.RGBA{cfg.Color.SunDay[0], cfg.Color.SunDay[1], cfg.Color.SunDay[2], 255}
 
 	day_list := gen_day_list(cfg)
 	wg := &sync.WaitGroup{}
