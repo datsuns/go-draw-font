@@ -1,11 +1,15 @@
 output:
   year: 2020
-  month: 1     # 何も書かないと1年分生成
+  month:      # 何も書かないと1年分生成
 font: ./GN-KillGothic-U-KanaNA.ttf
-size: 60.0
+size: 30.0
 image:
   width: 1500
   height: 1000
+color:
+  weekday:  [0x51, 0x51, 0x51]
+  saturday: [0x62, 0x88, 0xe3]
+  sunday:   [0xd9, 0x6b, 0x6b]
 XPos: # 横方向の描画開始位置。f(x) = 150x - 7
   - 0
   - 143

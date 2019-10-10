@@ -73,6 +73,11 @@ type Config struct {
 		Width  int `yaml:"width"`
 		Height int `yaml:"height"`
 	}
+	Color struct {
+		WeekDay  []int `yaml:"weekday,flow"`
+		SaturDay []int `yaml:"saturday,flow"`
+		SunDay   []int `yaml:"sunday,flow"`
+	}
 	XPos []int `yaml:"XPos,flow"`
 	YPos []int `yaml:"YPos,flow"`
 }
@@ -82,6 +87,10 @@ func (c *Config) Dump() {
 	fmt.Printf("font file : %v\n", c.Font)
 	fmt.Printf("font size : %v\n", c.Size)
 	fmt.Printf("    image : %vx%v\n", c.Image.Width, c.Image.Height)
+	fmt.Printf("    color : \n")
+	fmt.Printf("       weekday  : %v\n", c.Color.WeekDay)
+	fmt.Printf("       saturday : %v\n", c.Color.SaturDay)
+	fmt.Printf("       sunday   : %v\n", c.Color.SunDay)
 	fmt.Printf("    Xpos  : ")
 	for i, p := range c.XPos {
 		fmt.Printf("[%v:%v],", i, p)
@@ -247,6 +256,7 @@ func main() {
 		panic(err)
 	}
 	cfg.Dump()
+	return
 	os.MkdirAll(DestRoot, 0777)
 	ft := load_font(cfg.Font)
 	opt := truetype.Options{
