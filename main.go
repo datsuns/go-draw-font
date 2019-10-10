@@ -168,12 +168,12 @@ func gen_drawer(img *image.RGBA, face font.Face) (weekday *font.Drawer, sat *fon
 
 func gen_png(ft *truetype.Font, opt *truetype.Options, cfg *Config, title string, list []DayEntry) {
 	fmt.Printf("generate [%v] start\n", title)
-	imageWidth := cfg.Image.Width
-	imageHeight := cfg.Image.Height
-
-	img := image.NewRGBA(image.Rect(0, 0, imageWidth, imageHeight))
+	img := image.NewRGBA(image.Rect(0, 0, cfg.Image.Width, cfg.Image.Height))
 	face := truetype.NewFace(ft, opt)
 	dr_week, dr_sat, dr_sun := gen_drawer(img, face)
+	sp_dr := map[time.Weekday]*font.Drawer{
+		time.Sunday: dr_sun, time.Saturday: dr_sat,
+	}
 
 	file, err := os.Create(filepath.Join(DestRoot, title+".png"))
 	if err != nil {
@@ -190,20 +190,17 @@ func gen_png(ft *truetype.Font, opt *truetype.Options, cfg *Config, title string
 		if text == EmptyDayChar {
 			continue
 		}
-		buf.Reset()
 		var dr *font.Drawer
-		//fmt.Printf("%2v) x:%v, y:%v char[%v]\n", i, dr.Dot.X, dr.Dot.Y, text)
-		switch weekDay {
-		case time.Sunday:
-			dr = dr_sun
-		case time.Saturday:
-			dr = dr_sat
-		default:
+		if d, ok := sp_dr[weekDay]; ok {
+			dr = d
+		} else {
 			dr = dr_week
 		}
+		//fmt.Printf("%2v) x:%v, y:%v char[%v]\n", i, dr.Dot.X, dr.Dot.Y, text)
 		dr.Dot.X = fixed.I(cfg.XPos[i%7])
 		dr.Dot.Y = fixed.I(cfg.YPos[h_idx])
 		dr.DrawString(text)
+		buf.Reset()
 		err = png.Encode(buf, img)
 		if (i > 0) && (i%7 == 6) {
 			h_idx += 1
